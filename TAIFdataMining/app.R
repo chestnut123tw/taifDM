@@ -2,8 +2,6 @@ library(shiny)
 library(plotly)
 library(gridlayout)
 library(bslib)
-library(DT)
-library(shiny)
 library(tidyverse)
 library(DT)
 
@@ -25,8 +23,8 @@ ceiling_digits <- function(x, digits = 10){ceiling((x + 1)/digits)*digits}
 # taiCOL taxa list ----
 name_plantae_taicol <- read_csv(grep("^.+www/TaiCOL_taxon_plantae_.+\\.csv$", x = list.files(recursive = TRUE),value = TRUE) %>% latestPath())
 
-name_plantae_taicol <- name_plantae_taicol %>% 
-  mutate(taxon_id = paste0("<a href='", "https://taicol.tw/taxon/", taxon_id,"' target='_blank'>", taxon_id,"</a>")) %>% 
+name_plantae_taicol <- name_plantae_taicol %>%
+  mutate(taxon_id = paste0("<a href='", "https://taicol.tw/taxon/", taxon_id,"' target='_blank'>", taxon_id,"</a>")) %>%
   select(-name_id) %>%
   relocate(ends_with("name_c"), .after = taxon_id)
 

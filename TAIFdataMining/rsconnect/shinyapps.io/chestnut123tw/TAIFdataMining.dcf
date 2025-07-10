@@ -5,7 +5,7 @@ account: chestnut123tw
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15037518
-bundleId: 10583887
+bundleId: 10583995
 url: https://chestnut123tw.shinyapps.io/TAIFdataMining/
 version: 1
 asMultiple: FALSE
