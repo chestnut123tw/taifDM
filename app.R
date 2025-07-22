@@ -17,8 +17,6 @@ latestPath <- function(path){
   return(path[latestOrder])
 }
 
-# function -- ceiling by digits as `round(digits = ...)`
-ceiling_digits <- function(x, digits = 10){ceiling((x + 1)/digits)*digits}
 
 
 
@@ -28,6 +26,7 @@ csv_path <- list.files(
   pattern = "^TaiCOL_taxon_plantae_.*\\.csv$",
   full.names = TRUE
 ) %>% latestPath()
+data_version <- stringr::str_extract(basename(csv_path), "\\d{8}")
 name_plantae_taicol <- read_csv(csv_path)
 
 name_plantae_taicol <- name_plantae_taicol %>%
@@ -40,7 +39,7 @@ ui <- fluidPage(
   titlePanel("TaiCOL Name List"),
   sidebarLayout(
     sidebarPanel(
-      em("(version TaiCOL_taxon_20250429)"),
+      em(paste0("(version ", data_version, ")")),
       checkboxInput(
         inputId = "isEndemic",
         label = "Endemic",
