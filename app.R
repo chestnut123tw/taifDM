@@ -56,16 +56,38 @@ ui <- fluidPage(
         label = "Filter Value"
       ),
       selectInput(
-        inputId = "plot_columns",
-        label = "Plot Columns",
+        inputId = "x_col",
+        label = "X Axis",
         choices = names(name_plantae_taicol),
-        selected = "rank",
-        multiple = TRUE
+        selected = "rank"
+      ),
+      selectInput(
+        inputId = "y_col",
+        label = "Y Axis",
+        choices = names(name_plantae_taicol),
+        selected = "taxon_id"
+      ),
+      selectInput(
+        inputId = "color_col",
+        label = "Color",
+        choices = c("None" = "", names(name_plantae_taicol)),
+        selected = ""
       ),
       selectInput(
         inputId = "chart_type",
         label = "Chart Type",
-        choices = c("Bar" = "bar", "Line" = "line", "Scatter" = "scatter"),
+        choices = c(
+          "Bar" = "bar",
+          "Line" = "line",
+          "Scatter" = "scatter",
+          "Boxplot" = "boxplot",
+          "Histogram" = "hist",
+          "Density" = "density",
+          "Violin" = "violin",
+          "Area" = "area",
+          "Waffle" = "waffle",
+          "Calendar" = "calendar"
+        ),
         selected = "bar"
       )
     ),
@@ -110,24 +132,64 @@ server <- function(input, output) {
   })
 
   output$barPlot <- renderPlotly({
-    req(input$plot_columns)
-    plot_data <- filtered_data() %>%
-      count(across(all_of(input$plot_columns))) %>%
-      arrange(desc(n)) %>%
-      slice_head(n = 20) %>%
-      mutate(group = apply(across(all_of(input$plot_columns)), 1, paste, collapse = " | "))
+    req(input$x_col)
+    df <- filtered_data()
+    x <- rlang::sym(input$x_col)
+    y <- if (nzchar(input$y_col)) rlang::sym(input$y_col) else NULL
+    color <- if (nzchar(input$color_col)) rlang::sym(input$color_col) else NULL
 
-    p <- ggplot(plot_data, aes(x = reorder(group, n), y = n))
+    p <- ggplot(df)
 
-    if (input$chart_type == "bar") {
-      p <- p + geom_col() + coord_flip()
-    } else if (input$chart_type == "line") {
-      p <- p + geom_line(group = 1) + geom_point()
+    if (input$chart_type == "waffle") {
+      counts <- df %>% count(!!x)
+      n_cols <- 10
+      waffle_df <- counts %>%
+        tidyr::uncount(n) %>%
+        mutate(idx = row_number() - 1,
+               row = idx %/% n_cols,
+               col = idx %% n_cols)
+      p <- ggplot(waffle_df, aes(col, -row, fill = !!x)) +
+        geom_tile(color = "white") +
+        scale_y_continuous(NULL, breaks = NULL) +
+        scale_x_continuous(NULL, breaks = NULL) +
+        guides(fill = guide_legend(title = rlang::as_label(x)))
+    } else if (input$chart_type == "calendar") {
+      df <- df %>% mutate(date = as.Date(as.character(!!x)))
+      df <- df %>% count(date) %>%
+        mutate(week = lubridate::isoweek(date),
+               wday = lubridate::wday(date, week_start = 1))
+      p <- ggplot(df, aes(week, wday, fill = n, text = date)) +
+        geom_tile(color = "white") +
+        scale_y_reverse(breaks = 1:7,
+                        labels = c("Mon","Tue","Wed","Thu","Fri","Sat","Sun")) +
+        labs(x = "Week", y = NULL, fill = "Count")
     } else {
-      p <- p + geom_point()
-    }
+      aes_args <- list(x = !!x)
+      if (!is.null(y) && input$chart_type %in% c("line", "scatter", "boxplot",
+                                                 "violin", "area")) {
+        aes_args$y <- !!y
+      }
+      if (!is.null(color)) aes_args$colour <- !!color
+      p <- p + do.call(aes, aes_args)
 
-    p <- p + labs(x = paste(input$plot_columns, collapse = " / "), y = "Count")
+      if (input$chart_type == "bar") {
+        p <- p + geom_bar()
+      } else if (input$chart_type == "line") {
+        p <- p + geom_line() + geom_point()
+      } else if (input$chart_type == "scatter") {
+        p <- p + geom_point()
+      } else if (input$chart_type == "boxplot") {
+        p <- p + geom_boxplot()
+      } else if (input$chart_type == "hist") {
+        p <- p + geom_histogram(bins = 30)
+      } else if (input$chart_type == "density") {
+        p <- p + geom_density()
+      } else if (input$chart_type == "violin") {
+        p <- p + geom_violin()
+      } else if (input$chart_type == "area") {
+        p <- p + geom_area()
+      }
+    }
 
     ggplotly(p)
   })
