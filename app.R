@@ -3,6 +3,8 @@ library(plotly)
 library(bslib)
 library(tidyverse)
 library(DT)
+library(colourpicker)
+library(viridis)
 
 # library(data.table)
 
@@ -74,6 +76,12 @@ ui <- fluidPage(
         inputId = "filter_value",
         label = "Filter Value"
       ),
+      selectizeInput(
+        inputId = "filter_values",
+        label = "Filter Values (group)",
+        choices = NULL,
+        multiple = TRUE
+      ),
       selectInput(
         inputId = "x_col",
         label = "X Axis",
@@ -97,6 +105,20 @@ ui <- fluidPage(
         label = "Fill",
         choices = c("None" = "", names(name_plantae_taicol)),
         selected = ""
+      ),
+      selectInput(
+        inputId = "palette_name",
+        label = "Color Palette",
+        choices = c(
+          "Viridis", "Plasma", "Inferno", "Magma", "Cividis",
+          "Set1", "Set2", "Dark2", "Custom"
+        ),
+        selected = "Viridis"
+      ),
+      colourInput(
+        inputId = "custom_color",
+        label = "Custom Color",
+        value = "#1f77b4"
       ),
       selectInput(
         inputId = "chart_type",
@@ -131,6 +153,11 @@ ui <- fluidPage(
 
 server <- function(input, output) {
 
+  observeEvent(input$filter_column, {
+    choices <- unique(name_plantae_taicol[[input$filter_column]])
+    updateSelectizeInput(session, "filter_values", choices = choices, server = TRUE)
+  })
+
   filtered_data <- reactive({
     df <- name_plantae_taicol
 
@@ -147,7 +174,9 @@ server <- function(input, output) {
       }
     }
 
-    if (nzchar(input$filter_value) && input$filter_column %in% names(df)) {
+    if (length(input$filter_values) > 0 && input$filter_column %in% names(df)) {
+      df <- df %>% filter(.data[[input$filter_column]] %in% input$filter_values)
+    } else if (nzchar(input$filter_value) && input$filter_column %in% names(df)) {
       df <- df %>% filter(
         str_detect(as.character(.data[[input$filter_column]]),
                    fixed(input$filter_value, ignore_case = TRUE))
@@ -250,6 +279,19 @@ server <- function(input, output) {
       } else if (chart == "area") {
         p <- p + geom_area()
       }
+    }
+
+    pal <- input$palette_name
+    if (pal == "Custom") {
+      p <- p + scale_color_manual(values = input$custom_color) +
+        scale_fill_manual(values = input$custom_color)
+    } else if (pal %in% c("Viridis", "Plasma", "Inferno", "Magma", "Cividis")) {
+      opt <- tolower(pal)
+      p <- p + viridis::scale_color_viridis_d(option = opt) +
+        viridis::scale_fill_viridis_d(option = opt)
+    } else {
+      p <- p + scale_color_brewer(palette = pal) +
+        scale_fill_brewer(palette = pal)
     }
 
     ggplotly(p)
