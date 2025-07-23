@@ -64,8 +64,8 @@ ui <- fluidPage(
       selectInput(
         inputId = "y_col",
         label = "Y Axis",
-        choices = names(name_plantae_taicol),
-        selected = "taxon_id"
+        choices = c("None" = "", names(name_plantae_taicol)),
+        selected = ""
       ),
       selectInput(
         inputId = "color_col",
@@ -164,30 +164,43 @@ server <- function(input, output) {
                         labels = c("Mon","Tue","Wed","Thu","Fri","Sat","Sun")) +
         labs(x = "Week", y = NULL, fill = "Count")
     } else {
-      aes_args <- list(x = !!x)
-      if (!is.null(y) && input$chart_type %in% c("line", "scatter", "boxplot",
-                                                 "violin", "area")) {
-        aes_args$y <- !!y
-      }
-      if (!is.null(color)) aes_args$colour <- !!color
-      p <- p + do.call(aes, aes_args)
-
       if (input$chart_type == "bar") {
-        p <- p + geom_bar()
-      } else if (input$chart_type == "line") {
-        p <- p + geom_line() + geom_point()
-      } else if (input$chart_type == "scatter") {
-        p <- p + geom_point()
-      } else if (input$chart_type == "boxplot") {
-        p <- p + geom_boxplot()
-      } else if (input$chart_type == "hist") {
-        p <- p + geom_histogram(bins = 30)
-      } else if (input$chart_type == "density") {
-        p <- p + geom_density()
-      } else if (input$chart_type == "violin") {
-        p <- p + geom_violin()
-      } else if (input$chart_type == "area") {
-        p <- p + geom_area()
+        if (is.null(y)) {
+          p <- ggplot(df, aes(x = !!x))
+          if (!is.null(color)) p <- p + aes(fill = !!color)
+          p <- p + geom_bar()
+        } else {
+          group_vars <- c(as.character(x), as.character(y))
+          if (!is.null(color)) group_vars <- c(group_vars, as.character(color))
+          df_sum <- df %>% count(!!!syms(group_vars))
+          aes_args <- list(x = !!x, y = n)
+          if (!is.null(color)) aes_args$fill <- !!color
+          p <- ggplot(df_sum) + do.call(aes, aes_args) + geom_col(position = "dodge")
+        }
+      } else {
+        aes_args <- list(x = !!x)
+        if (!is.null(y) && input$chart_type %in% c("line", "scatter", "boxplot",
+                                                   "violin", "area")) {
+          aes_args$y <- !!y
+        }
+        if (!is.null(color)) aes_args$colour <- !!color
+        p <- ggplot(df) + do.call(aes, aes_args)
+
+        if (input$chart_type == "line") {
+          p <- p + geom_line() + geom_point()
+        } else if (input$chart_type == "scatter") {
+          p <- p + geom_point()
+        } else if (input$chart_type == "boxplot") {
+          p <- p + geom_boxplot()
+        } else if (input$chart_type == "hist") {
+          p <- p + geom_histogram(bins = 30)
+        } else if (input$chart_type == "density") {
+          p <- p + geom_density()
+        } else if (input$chart_type == "violin") {
+          p <- p + geom_violin()
+        } else if (input$chart_type == "area") {
+          p <- p + geom_area()
+        }
       }
     }
 
