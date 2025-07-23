@@ -156,7 +156,7 @@ ui <- fluidPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
 
   observeEvent(input$filter_column, {
     choices <- unique(name_plantae_taicol[[input$filter_column]])
